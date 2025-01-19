@@ -50,9 +50,32 @@ function requireAuth(req, res, next) {
   }
 }
 // routing HTML.
-
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.get('/register', (req, res) => res.sendFile(path.join(__dirname, 'public', 'register.html')));
+app.get('/login', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
+app.get('/post', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'post.html')));
+app.get('/index', requireAuth, (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html'), { username: req.user.username }));
 // user registration.
+app.post('/register', async (req, res) => {
+  const { username, email, password } = req.body;
 
+  try {
+    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
+
+    if (existingUser) return res.status(400).json({ message: 'User already exists' });
+
+    const newUser = new User({ username, email, password });
+    await newUser.save();
+
+    const token = jwt.sign({ userId: newUser._id, username: newUser.username }, SECRET_KEY, { expiresIn: '1h' });
+    req.session.token = token;
+
+    res.send({"message":`The user ${username}has been added`});
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
 // user login.
 
 // post creation.
